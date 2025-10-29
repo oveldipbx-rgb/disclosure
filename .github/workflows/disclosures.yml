@@ -1,25 +1,43 @@
-      - name: Generate disclosures.json from OTC
+name: Update Disclosures (OTC)
+
+on:
+  schedule:
+    - cron: "17 8 * * *"   # daily at 08:17 UTC
+  workflow_dispatch: {}     # allows manual "Run workflow"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch OTC disclosures (raw)
         run: |
-          node -e "
-          const https = require('https');
+          set -euo pipefail
+          URL="https://backend.otcmarkets.com/otcapi/company/financial-report?symbol=TUTH&page=1&pageSize=200"
+          # Add common headers so the endpoint doesn’t reject the request
+          curl -sS --fail \
+            -H "accept: application/json" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+            -H "Referer: https://www.otcmarkets.com/stock/TUTH/disclosure" \
+            "$URL" -o raw.json
+          test -s raw.json || (echo "Empty response from OTC" && exit 1)
+
+      - name: Create build script
+        run: |
+          cat > build.js <<'EOF'
           const fs = require('fs');
 
-          function get(url, headers = {}) {
-            return new Promise((resolve, reject) => {
-              https.get(url, { headers }, (res) => {
-                let data = '';
-                res.on('data', c => data += c);
-                res.on('end', () => {
-                  if (res.statusCode < 200 || res.statusCode >= 300) {
-                    return reject(new Error('HTTP ' + res.statusCode + ' from ' + url));
-                  }
-                  resolve(data);
-                });
-              }).on('error', reject);
-            });
-          }
-
-          // Try hard to obtain a numeric filing id from any known place
           function extractId(x) {
             const tryVals = [
               x.filingId, x.filingID, x.id,
@@ -29,16 +47,16 @@
             ].filter(v => v !== undefined && v !== null);
 
             for (const v of tryVals) {
-              const n = String(v).match(/\\d+/);
-              if (n) return n[0];
+              const m = String(v).match(/\d+/);
+              if (m) return m[0];
             }
 
             const paths = [x.documentUrl, x.url, x.fileUrl, x.link].filter(Boolean);
             for (const p of paths) {
-              // common patterns we see on OTC
-              const m1 = String(p).match(/[?&]id=(\\d+)/);                 // .../filing/view?id=123456
-              const m2 = String(p).match(/\\/financial-report\\/(\\d+)/);  // .../financial-report/123456/content
-              const m3 = String(p).match(/\\/filing\\/(\\d+)/);            // .../filing/123456/...
+              const s = String(p);
+              const m1 = s.match(/[?&]id=(\d+)/);                 // .../filing/view?id=123456
+              const m2 = s.match(/\/financial-report\/(\d+)/);    // .../financial-report/123456/content
+              const m3 = s.match(/\/filing\/(\d+)/);              // .../filing/123456/...
               if (m1) return m1[1];
               if (m2) return m2[1];
               if (m3) return m3[1];
@@ -46,49 +64,52 @@
             return null;
           }
 
-          function normalizeLink(x, symbol = 'TUTH') {
+          function normalizeLink(x, symbol='TUTH') {
             const id = extractId(x);
             if (id) return 'https://www.otcmarkets.com/filing/view?id=' + id;
 
-            // If no id, try a fully-qualified documentUrl/url if present
             if (x.documentUrl) {
               const u = String(x.documentUrl);
-              if (/^https?:\\/\\//i.test(u)) return u;
+              if (/^https?:\/\//i.test(u)) return u;
               return 'https://www.otcmarkets.com' + (u.startsWith('/') ? u : '/' + u);
             }
-            if (x.url) return x.url;
-
-            // Last resort: disclosure landing page
+            if (x.url) return String(x.url);
             return 'https://www.otcmarkets.com/stock/' + symbol + '/disclosure';
           }
 
-          (async () => {
-            try {
-              const url = 'https://backend.otcmarkets.com/otcapi/company/financial-report?symbol=TUTH&page=1&pageSize=200';
-              const raw = await get(url, { accept: 'application/json' });
+          (function main() {
+            const raw = fs.readFileSync('raw.json', 'utf8');
+            let rows = [];
+            try { rows = JSON.parse(raw); }
+            catch (e) { console.error('Invalid JSON from OTC:', e.message); process.exit(1); }
+            if (!Array.isArray(rows)) rows = [];
 
-              let rows;
-              try { rows = JSON.parse(raw); } catch (e) {
-                throw new Error('Invalid JSON from OTC: ' + e.message);
-              }
-              if (!Array.isArray(rows)) rows = [];
+            const items = rows.map(x => {
+              const title = x.title || x.reportType || 'Untitled';
+              const iso   = x.publishDate || x.publishedDate || x.date || '';
+              const date  = iso ? new Date(iso).toISOString().slice(0,10) : '';
+              const link  = normalizeLink(x, 'TUTH');
+              const desc  = x.description || x.summary || '';
+              return { title, date, description: desc, link };
+            }).filter(i => i.title && i.link);
 
-              const items = rows.map(x => {
-                const title = x.title || x.reportType || 'Untitled';
-                const iso   = x.publishDate || x.publishedDate || x.date || '';
-                const date  = iso ? new Date(iso).toISOString().slice(0,10) : '';
-                const link  = normalizeLink(x, 'TUTH');
-                const desc  = x.description || x.summary || '';
-                return { title, date, description: desc, link };
-              }).filter(i => i.title && i.link);
-
-              // Sort newest first and cap
-              items.sort((a,b) => new Date(b.date) - new Date(a.date));
-              fs.writeFileSync('disclosures.json', JSON.stringify(items.slice(0, 200), null, 2));
-              console.log('Wrote disclosures.json with', items.length, 'items. Example link:', items[0]?.link);
-            } catch (err) {
-              console.error('Generation error:', err);
-              process.exit(1);
-            }
+            items.sort((a,b) => new Date(b.date) - new Date(a.date));
+            fs.writeFileSync('disclosures.json', JSON.stringify(items.slice(0, 200), null, 2));
+            console.log('Wrote disclosures.json with', items.length, 'items.');
           })();
-          "
+          EOF
+
+      - name: Build disclosures.json
+        run: node build.js
+
+      - name: Commit & push if changed
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add disclosures.json raw.json
+            git commit -m "chore: auto-update disclosures.json from OTC"
+            git push
+          else
+            echo "No changes to commit."
+          fi
