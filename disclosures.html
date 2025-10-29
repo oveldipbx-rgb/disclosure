@@ -22,7 +22,7 @@
   <script>
   (async function(){
     const el = document.getElementById("content");
-    const src = "https://sdl.care/disclosures.json"; // your JSON file
+    const src = "disclosures.json"; // your JSON file
     try {
       const res = await fetch(src);
       if (!res.ok) throw new Error("Fetch failed");
@@ -53,3 +53,4 @@
   </script>
 </body>
 </html>
+
