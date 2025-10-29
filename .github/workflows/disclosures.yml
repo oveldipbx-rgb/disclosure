@@ -3,7 +3,7 @@ name: Update Disclosures (OTC)
 on:
   schedule:
     - cron: "17 8 * * *"   # daily at 08:17 UTC
-  workflow_dispatch: {}     # allows manual "Run workflow"
+  workflow_dispatch: {}     # allow manual run
 
 permissions:
   contents: write
@@ -21,42 +21,53 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Fetch OTC disclosures (raw)
+      - name: Fetch OTC disclosures (log status, never hard-fail)
         run: |
           set -euo pipefail
           URL="https://backend.otcmarkets.com/otcapi/company/financial-report?symbol=TUTH&page=1&pageSize=200"
-          # Add common headers so the endpoint doesn’t reject the request
-          curl -sS --fail \
+          echo "GET $URL"
+          # capture HTTP status code
+          STATUS=$(curl -sS -w "%{http_code}" -o raw.json \
             -H "accept: application/json" \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
             -H "Referer: https://www.otcmarkets.com/stock/TUTH/disclosure" \
-            "$URL" -o raw.json
-          test -s raw.json || (echo "Empty response from OTC" && exit 1)
+            "$URL")
+          echo "HTTP status: $STATUS"
+          echo "----- raw.json (first 400 chars) -----"
+          head -c 400 raw.json || true
+          echo; echo "-------------------------------------"
+          # don’t exit with error; if status not 200 we’ll skip rebuild later
+          echo "$STATUS" > .http_status
 
-      - name: Create build script
+      - name: Build disclosures.json (only if fetch looked OK)
         run: |
+          set -euo pipefail
+          STATUS=$(cat .http_status)
+          if [ "$STATUS" != "200" ] || [ ! -s raw.json ]; then
+            echo "Skipping rebuild (status=$STATUS or empty response). Keeping existing disclosures.json."
+            exit 0
+          fi
+
           cat > build.js <<'EOF'
           const fs = require('fs');
 
           function extractId(x) {
-            const tryVals = [
+            const ids = [
               x.filingId, x.filingID, x.id,
               x.documentId, x.documentID,
               x.contentId, x.contentID,
               x.disclosureId, x.disclosureID
-            ].filter(v => v !== undefined && v !== null);
-
-            for (const v of tryVals) {
+            ].filter(v => v!=null);
+            for (const v of ids) {
               const m = String(v).match(/\d+/);
               if (m) return m[0];
             }
-
             const paths = [x.documentUrl, x.url, x.fileUrl, x.link].filter(Boolean);
             for (const p of paths) {
               const s = String(p);
-              const m1 = s.match(/[?&]id=(\d+)/);                 // .../filing/view?id=123456
-              const m2 = s.match(/\/financial-report\/(\d+)/);    // .../financial-report/123456/content
-              const m3 = s.match(/\/filing\/(\d+)/);              // .../filing/123456/...
+              const m1 = s.match(/[?&]id=(\d+)/);
+              const m2 = s.match(/\/financial-report\/(\d+)/);
+              const m3 = s.match(/\/filing\/(\d+)/);
               if (m1) return m1[1];
               if (m2) return m2[1];
               if (m3) return m3[1];
@@ -66,22 +77,23 @@ jobs:
 
           function normalizeLink(x, symbol='TUTH') {
             const id = extractId(x);
-            if (id) return 'https://www.otcmarkets.com/filing/view?id=' + id;
-
+            if (id) return `https://www.otcmarkets.com/filing/view?id=${id}`;
             if (x.documentUrl) {
               const u = String(x.documentUrl);
               if (/^https?:\/\//i.test(u)) return u;
               return 'https://www.otcmarkets.com' + (u.startsWith('/') ? u : '/' + u);
             }
             if (x.url) return String(x.url);
-            return 'https://www.otcmarkets.com/stock/' + symbol + '/disclosure';
+            return `https://www.otcmarkets.com/stock/${symbol}/disclosure`;
           }
 
           (function main() {
-            const raw = fs.readFileSync('raw.json', 'utf8');
             let rows = [];
-            try { rows = JSON.parse(raw); }
-            catch (e) { console.error('Invalid JSON from OTC:', e.message); process.exit(1); }
+            try { rows = JSON.parse(fs.readFileSync('raw.json','utf8')); }
+            catch (e) {
+              console.log('Invalid JSON from OTC:', e.message);
+              process.exit(0); // don’t fail the job; keep existing file
+            }
             if (!Array.isArray(rows)) rows = [];
 
             const items = rows.map(x => {
@@ -99,15 +111,14 @@ jobs:
           })();
           EOF
 
-      - name: Build disclosures.json
-        run: node build.js
+          node build.js
 
       - name: Commit & push if changed
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add disclosures.json raw.json
+            git add disclosures.json raw.json .http_status
             git commit -m "chore: auto-update disclosures.json from OTC"
             git push
           else
