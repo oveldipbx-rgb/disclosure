@@ -1,0 +1,22 @@
+:root { --bg:#0b0c10; --card:#12141a; --muted:#9aa3af; --text:#e5e7eb; --line:#1f2430; }
+* { box-sizing: border-box; }
+body { margin:0; font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+.wrap { max-width:960px; margin:0 auto; padding:24px; }
+.page-head h1 { margin:0 0 4px; font-size:28px; }
+.sub { margin:0; color:var(--muted); }
+.controls { display:flex; gap:12px; margin:20px 0; }
+.controls input, .controls select { flex:1; max-width:100%; padding:10px 12px; border:1px solid var(--line); background:#0f1117; color:var(--text); border-radius:10px; }
+.controls select { flex:0 0 220px; }
+.status { min-height:16px; color:var(--muted); margin:6px 0 12px; }
+.list { display:grid; gap:12px; }
+.card { border:1px solid var(--line); background:var(--card); padding:16px; border-radius:14px; }
+.card h3 { margin:0 0 6px; font-size:18px; }
+.meta { color:var(--muted); font-size:14px; margin-bottom:8px; }
+.card p { margin:0 0 10px; }
+.card a { color:#99c1ff; text-decoration:none; }
+.card a:focus, .card a:hover { text-decoration:underline; }
+.pager { display:flex; align-items:center; gap:12px; justify-content:center; margin:18px 0 8px; }
+.pager button { padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:#0f1117; color:var(--text); cursor:pointer; }
+.pager button:disabled { opacity:.5; cursor:not-allowed; }
+.page-foot { border-top:1px solid var(--line); margin-top:24px; padding-top:16px; color:var(--muted); }
+.noscript { background:#2a1a1a; border-left:4px solid #a33; padding:12px; margin:16px 0; }
