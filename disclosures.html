@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Filings & Disclosures</title>
+  <style>
+    body { font-family: system-ui, sans-serif; color:#1e293b; background:transparent; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:6px 4px; }
+    th { text-align:left; border-bottom:1px solid #e5e7eb; font-weight:600; }
+    tr { border-bottom:1px solid #f1f5f9; }
+    a { text-decoration:none; color:#0f172a; font-weight:600; }
+    a:hover { text-decoration:underline; }
+    .desc { color:#475569; font-size:14px; }
+    .date { white-space:nowrap; color:#64748b; font-size:13px; }
+  </style>
+</head>
+<body>
+  <h3>Filings & Disclosures</h3>
+  <div id="content">Loading data…</div>
+
+  <script>
+  (async function(){
+    const el = document.getElementById("content");
+    const src = "https://sdl.care/disclosures.json"; // your JSON file
+    try {
+      const res = await fetch(src);
+      if (!res.ok) throw new Error("Fetch failed");
+      const filings = await res.json();
+      if (!Array.isArray(filings) || !filings.length) {
+        el.innerHTML = "<p>No filings or disclosures available.</p>";
+        return;
+      }
+      filings.sort((a,b)=>new Date(b.date)-new Date(a.date));
+      el.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Title</th><th>Date</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            ${filings.map(f => `
+              <tr>
+                <td><a href="${f.link}" target="_blank">${f.title}</a></td>
+                <td class="date">${new Date(f.date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}</td>
+                <td class="desc">${f.description || ""}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+    } catch {
+      el.innerHTML = "<p>Couldn’t load filings/disclosures just now.</p>";
+    }
+  })();
+  </script>
+</body>
+</html>
