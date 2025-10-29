@@ -1,8 +1,20 @@
 [
   {
-    "title": "Placeholder until first run",
-    "date": "2025-01-01",
-    "description": "This file will be replaced automatically by the workflow.",
-    "link": "#"
+    "title": "Q3 2025 Quarterly Disclosure",
+    "date": "2025-10-15",
+    "description": "Unaudited quarterly disclosure filed with OTC Markets.",
+    "link": "https://www.otcmarkets.com/filing/view?id=12345678"
+  },
+  {
+    "title": "Q2 2025 Quarterly Disclosure",
+    "date": "2025-07-12",
+    "description": "Quarterly filing covering period ended June 30, 2025.",
+    "link": "https://www.otcmarkets.com/filing/view?id=23456789"
+  },
+  {
+    "title": "2024 Annual Report",
+    "date": "2025-04-10",
+    "description": "Audited annual report and attorney letter.",
+    "link": "https://www.otcmarkets.com/filing/view?id=34567890"
   }
 ]
