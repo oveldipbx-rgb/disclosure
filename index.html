@@ -1,57 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Filings & Disclosures | Standard Dental Labs Inc.</title>
-  <style>
-    body { font-family: system-ui, sans-serif; color:#1e293b; margin:20px; background:transparent; }
-    h3 { margin: 0 0 10px 0; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:6px 4px; }
-    th { text-align:left; border-bottom:1px solid #e5e7eb; font-weight:600; }
-    tr { border-bottom:1px solid #f1f5f9; }
-    a { text-decoration:none; color:#0f172a; font-weight:600; }
-    a:hover { text-decoration:underline; }
-    .date { white-space:nowrap; color:#64748b; font-size:13px; }
-    .desc { color:#475569; font-size:14px; }
-    .muted { color:#64748b; font-size:13px; }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Standard Dental Labs — Disclosures</title>
+  <link rel="preload" href="styles.css" as="style">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h3>Filings & Disclosures</h3>
-  <div id="content" class="muted">Loading data…</div>
+  <main class="wrap">
+    <header class="page-head">
+      <h1>Company Disclosures</h1>
+      <p class="sub">Material updates, filings, and investor notices.</p>
+    </header>
 
-  <script>
-  (async function(){
-    const el = document.getElementById("content");
-    const src = "disclosures.json?ts=" + Date.now(); // cache-buster
-    try {
-      const res = await fetch(src, { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const filings = await res.json();
-      if (!Array.isArray(filings) || !filings.length) {
-        el.innerHTML = "<p>No filings or disclosures available.</p>";
-        return;
-      }
-      filings.sort((a,b)=> new Date(b.date) - new Date(a.date));
-      el.classList.remove("muted");
-      el.innerHTML = `
-        <table>
-          <thead><tr><th>Title</th><th>Date</th><th>Description</th></tr></thead>
-          <tbody>
-            ${filings.map(f => `
-              <tr>
-                <td><a href="${f.link}" target="_blank" rel="noopener noreferrer">${f.title}</a></td>
-                <td class="date">${f.date ? new Date(f.date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : ""}</td>
-                <td class="desc">${f.description || ""}</td>
-              </tr>`).join("")}
-          </tbody>
-        </table>`;
-    } catch (e) {
-      el.innerHTML = "<p>Couldn’t load filings/disclosures just now.</p>";
-    }
-  })();
-  </script>
+    <section class="controls" aria-label="Filters">
+      <input id="q" type="search" placeholder="Search title or description…" aria-label="Search disclosures">
+      <select id="sort" aria-label="Sort">
+        <option value="date_desc" selected>Newest first</option>
+        <option value="date_asc">Oldest first</option>
+        <option value="title_asc">Title A–Z</option>
+        <option value="title_desc">Title Z–A</option>
+      </select>
+    </section>
+
+    <section id="status" class="status" role="status" aria-live="polite"></section>
+
+    <section id="list" class="list" aria-label="Disclosures"></section>
+
+    <nav class="pager" aria-label="Pagination">
+      <button id="prev" type="button" disabled>Previous</button>
+      <span id="pageinfo" class="pageinfo" aria-live="polite"></span>
+      <button id="next" type="button" disabled>Next</button>
+    </nav>
+
+    <footer class="page-foot">
+      <small>© <span id="year"></span> Standard Dental Labs Inc. All rights reserved.</small>
+    </footer>
+  </main>
+
+  <noscript>
+    <div class="noscript">This page needs JavaScript enabled to display disclosures.</div>
+  </noscript>
+
+  <script type="module" src="script.js"></script>
 </body>
 </html>
