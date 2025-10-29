@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Filings & Disclosures | Standard Dental Labs Inc.</title>
   <style>
-    body { font-family: system-ui, sans-serif; color:#1e293b; background:transparent; margin:20px; }
+    body { font-family: system-ui, sans-serif; color:#1e293b; margin:20px; background:transparent; }
     h3 { margin: 0 0 10px 0; }
     table { width:100%; border-collapse:collapse; }
     th, td { padding:6px 4px; }
@@ -16,7 +16,6 @@
     .date { white-space:nowrap; color:#64748b; font-size:13px; }
     .desc { color:#475569; font-size:14px; }
     .muted { color:#64748b; font-size:13px; }
-    code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }
   </style>
 </head>
 <body>
@@ -26,25 +25,20 @@
   <script>
   (async function(){
     const el = document.getElementById("content");
-    const src = "disclosures.json?ts=" + Date.now();  // cache-buster
+    const src = "disclosures.json?ts=" + Date.now(); // cache-buster
     try {
       const res = await fetch(src, { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const filings = await res.json();
-
       if (!Array.isArray(filings) || !filings.length) {
         el.innerHTML = "<p>No filings or disclosures available.</p>";
         return;
       }
-
       filings.sort((a,b)=> new Date(b.date) - new Date(a.date));
-
       el.classList.remove("muted");
       el.innerHTML = `
         <table>
-          <thead>
-            <tr><th>Title</th><th>Date</th><th>Description</th></tr>
-          </thead>
+          <thead><tr><th>Title</th><th>Date</th><th>Description</th></tr></thead>
           <tbody>
             ${filings.map(f => `
               <tr>
@@ -53,18 +47,9 @@
                 <td class="desc">${f.description || ""}</td>
               </tr>`).join("")}
           </tbody>
-        </table>
-      `;
-
-      // tiny debug line (optional)
-      const dbg = document.createElement('div');
-      dbg.style.cssText = "margin-top:8px;color:#64748b;font-size:12px";
-      dbg.innerHTML = `Loaded <code>${src}</code> (${filings.length} records)`;
-      el.parentNode.appendChild(dbg);
-
+        </table>`;
     } catch (e) {
       el.innerHTML = "<p>Couldn’t load filings/disclosures just now.</p>";
-      console.error("Error fetching disclosures:", e);
     }
   })();
   </script>
