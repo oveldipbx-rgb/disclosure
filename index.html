@@ -5,56 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Filings & Disclosures | Standard Dental Labs Inc.</title>
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      color: #1e293b;
-      background: transparent;
-      margin: 20px;
-    }
-    h3 {
-      margin: 0 0 10px 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 6px 4px;
-    }
-    th {
-      text-align: left;
-      border-bottom: 1px solid #e5e7eb;
-      font-weight: 600;
-    }
-    tr {
-      border-bottom: 1px solid #f1f5f9;
-    }
-    a {
-      text-decoration: none;
-      color: #0f172a;
-      font-weight: 600;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    .date {
-      white-space: nowrap;
-      color: #64748b;
-      font-size: 13px;
-    }
-    .desc {
-      color: #475569;
-      font-size: 14px;
-    }
-    .muted {
-      color: #64748b;
-      font-size: 13px;
-    }
-    code {
-      background: #f3f4f6;
-      padding: 2px 4px;
-      border-radius: 4px;
-    }
+    body { font-family: system-ui, sans-serif; color:#1e293b; background:transparent; margin:20px; }
+    h3 { margin: 0 0 10px 0; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:6px 4px; }
+    th { text-align:left; border-bottom:1px solid #e5e7eb; font-weight:600; }
+    tr { border-bottom:1px solid #f1f5f9; }
+    a { text-decoration:none; color:#0f172a; font-weight:600; }
+    a:hover { text-decoration:underline; }
+    .date { white-space:nowrap; color:#64748b; font-size:13px; }
+    .desc { color:#475569; font-size:14px; }
+    .muted { color:#64748b; font-size:13px; }
+    code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }
   </style>
 </head>
 <body>
@@ -64,9 +26,7 @@
   <script>
   (async function(){
     const el = document.getElementById("content");
-
-    // Always fetch the latest JSON (cache-buster added)
-    const src = "disclosures.json?ts=" + Date.now();
+    const src = "disclosures.json?ts=" + Date.now();  // cache-buster
     try {
       const res = await fetch(src, { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -77,10 +37,8 @@
         return;
       }
 
-      // Sort newest first
-      filings.sort((a,b)=>new Date(b.date)-new Date(a.date));
+      filings.sort((a,b)=> new Date(b.date) - new Date(a.date));
 
-      // Render table
       el.classList.remove("muted");
       el.innerHTML = `
         <table>
@@ -98,7 +56,7 @@
         </table>
       `;
 
-      // Debug info at bottom (optional)
+      // tiny debug line (optional)
       const dbg = document.createElement('div');
       dbg.style.cssText = "margin-top:8px;color:#64748b;font-size:12px";
       dbg.innerHTML = `Loaded <code>${src}</code> (${filings.length} records)`;
