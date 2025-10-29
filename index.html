@@ -2,126 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Filings & Disclosures</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Filings & Disclosures | Standard Dental Labs Inc.</title>
   <style>
-    body { font-family: system-ui, sans-serif; color:#1e293b; margin:20px; background:transparent; }
-    h3 { margin: 0 0 10px 0; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:6px 4px; }
-    th { text-align:left; border-bottom:1px solid #e5e7eb; font-weight:600; }
-    tr { border-bottom:1px solid #f1f5f9; }
-    a { text-decoration:none; color:#0f172a; font-weight:600; }
-    a:hover { text-decoration:underline; }
-    .date { white-space:nowrap; color:#64748b; font-size:13px; }
-    .desc { color:#475569; font-size:14px; }
-    .muted { color:#64748b; font-size:13px; }
-    .debug { margin-top:10px; padding:8px; font-size:12px; color:#1f2937; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; }
-    .ok { background:#ecfdf5; border-color:#a7f3d0; }
-    code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }
+    body {
+      font-family: system-ui, sans-serif;
+      color: #1e293b;
+      background: transparent;
+      margin: 20px;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 6px 4px;
+    }
+    th {
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+    }
+    tr {
+      border-bottom: 1px solid #f1f5f9;
+    }
+    a {
+      text-decoration: none;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .date {
+      white-space: nowrap;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .desc {
+      color: #475569;
+      font-size: 14px;
+    }
+    .muted {
+      color: #64748b;
+      font-size: 13px;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <h3>Filings & Disclosures</h3>
   <div id="content" class="muted">Loading data…</div>
-  <div id="debug" class="debug" hidden></div>
 
   <script>
-  (async function () {
+  (async function(){
     const el = document.getElementById("content");
-    const dbg = document.getElementById("debug");
 
-    // 1) Candidate JSON URLs (local-first). You can override with ?src=<URL>
-    const qsSrc = new URLSearchParams(location.search).get("src");
-    const base = location.pathname.endsWith("/") ? location.pathname : location.pathname.replace(/[^/]+$/, "");
-    const candidates = (qsSrc ? [qsSrc] : [
-      "disclosures.json",
-      "./disclosures.json",
-      location.origin + base + "disclosures.json"
-    ]);
+    // Always fetch the latest JSON (cache-buster added)
+    const src = "disclosures.json?ts=" + Date.now();
+    try {
+      const res = await fetch(src, { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const filings = await res.json();
 
-    // 2) Helper to show debug info
-    function showDebug(html, ok=false) {
-      dbg.innerHTML = html;
-      dbg.hidden = false;
-      if (ok) dbg.classList.add("ok");
-    }
-
-    // 3) Fetch with detailed errors
-    async function fetchJson(url) {
-      const r = await fetch(url, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status + " from " + url);
-      const text = await r.text();
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        throw new Error("JSON parse error from " + url + ": " + e.message + "\nFirst 200 chars:\n" + text.slice(0,200));
+      if (!Array.isArray(filings) || !filings.length) {
+        el.innerHTML = "<p>No filings or disclosures available.</p>";
+        return;
       }
-    }
 
-    // 4) Try candidates in order
-    let filings = null, tried = [];
-    for (const url of candidates) {
-      try {
-        tried.push(url);
-        filings = await fetchJson(url);
-        showDebug(
-          `Loaded <code>${url}</code> successfully.<br>` +
-          `Tried in order: <code>${tried.join(" → ")}</code>`,
-          true
-        );
-        break;
-      } catch (e) {
-        tried.push("✗ " + e.message);
-      }
-    }
+      // Sort newest first
+      filings.sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-    // 5) If still nothing, show detailed error/help and render a fallback row
-    if (!filings || !Array.isArray(filings)) {
-      showDebug(
-        `Could not load <code>disclosures.json</code> from any candidate.<br><br>
-         <strong>Troubleshooting:</strong><br>
-         • Make sure a file named <code>disclosures.json</code> exists in the <em>same folder</em> as this page (repo root).<br>
-         • Open this URL directly in your browser: <code>${location.origin}${base}disclosures.json</code> — it should show raw JSON text.<br>
-         • JSON must be valid (no trailing commas, smart quotes).<br><br>
-         <strong>Attempts & errors:</strong><br>
-         <pre style="white-space:pre-wrap">${tried.join("\n")}</pre>`
-      );
+      // Render table
+      el.classList.remove("muted");
       el.innerHTML = `
         <table>
-          <thead><tr><th>Title</th><th>Date</th><th>Description</th></tr></thead>
+          <thead>
+            <tr><th>Title</th><th>Date</th><th>Description</th></tr>
+          </thead>
           <tbody>
-            <tr>
-              <td><a href="#" onclick="return false">Sample — replace with real filing</a></td>
-              <td class="date">—</td>
-              <td class="desc">Fallback row shown because <code>disclosures.json</code> did not load.</td>
-            </tr>
+            ${filings.map(f => `
+              <tr>
+                <td><a href="${f.link}" target="_blank" rel="noopener noreferrer">${f.title}</a></td>
+                <td class="date">${f.date ? new Date(f.date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : ""}</td>
+                <td class="desc">${f.description || ""}</td>
+              </tr>`).join("")}
           </tbody>
-        </table>`;
-      return;
-    }
+        </table>
+      `;
 
-    // 6) Render the real table
-    if (!filings.length) {
-      el.innerHTML = "<p>No filings or disclosures available.</p>";
-      return;
+      // Debug info at bottom (optional)
+      const dbg = document.createElement('div');
+      dbg.style.cssText = "margin-top:8px;color:#64748b;font-size:12px";
+      dbg.innerHTML = `Loaded <code>${src}</code> (${filings.length} records)`;
+      el.parentNode.appendChild(dbg);
+
+    } catch (e) {
+      el.innerHTML = "<p>Couldn’t load filings/disclosures just now.</p>";
+      console.error("Error fetching disclosures:", e);
     }
-    filings.sort((a,b)=> new Date(b.date) - new Date(a.date));
-    el.classList.remove("muted");
-    el.innerHTML = `
-      <table>
-        <thead>
-          <tr><th>Title</th><th>Date</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          ${filings.map(f => `
-            <tr>
-              <td><a href="${f.link}" target="_blank" rel="noopener noreferrer">${f.title}</a></td>
-              <td class="date">${f.date ? new Date(f.date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : ""}</td>
-              <td class="desc">${f.description || ""}</td>
-            </tr>`).join("")}
-        </tbody>
-      </table>`;
   })();
   </script>
 </body>
