@@ -26,7 +26,6 @@ jobs:
           set -euo pipefail
           URL="https://backend.otcmarkets.com/otcapi/company/financial-report?symbol=TUTH&page=1&pageSize=200"
           echo "GET $URL"
-          # capture HTTP status code
           STATUS=$(curl -sS -w "%{http_code}" -o raw.json \
             -H "accept: application/json" \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
@@ -36,7 +35,6 @@ jobs:
           echo "----- raw.json (first 400 chars) -----"
           head -c 400 raw.json || true
           echo; echo "-------------------------------------"
-          # don’t exit with error; if status not 200 we’ll skip rebuild later
           echo "$STATUS" > .http_status
 
       - name: Build disclosures.json (only if fetch looked OK)
@@ -92,7 +90,7 @@ jobs:
             try { rows = JSON.parse(fs.readFileSync('raw.json','utf8')); }
             catch (e) {
               console.log('Invalid JSON from OTC:', e.message);
-              process.exit(0); // don’t fail the job; keep existing file
+              process.exit(0); // keep existing file
             }
             if (!Array.isArray(rows)) rows = [];
 
