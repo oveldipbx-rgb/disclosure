@@ -1,0 +1,12 @@
+{
+  "name": "sdl-disclosures",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/scrape-otc-and-sec.js"
+  },
+  "dependencies": {
+    "@playwright/test": "1.48.2",
+    "node-fetch": "3.3.2"
+  }
+}
