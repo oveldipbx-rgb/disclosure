@@ -1,10 +1,14 @@
 name: Build disclosures.json
 
 on:
+  workflow_dispatch: {}        # lets you run it manually
   push:
     branches: [ main ]
   schedule:
-    - cron: "0 */6 * * *"   # every 6 hours
+    - cron: "0 */6 * * *"      # every 6 hours
+
+permissions:
+  contents: write              # allow the bot to commit the file
 
 jobs:
   build:
@@ -18,23 +22,27 @@ jobs:
         with:
           node-version: "20"
 
+      # If you don't have a package-lock.json, npm ci will fail. Use npm install.
       - name: Install deps
-        run: npm ci
+        run: npm install
         env:
           CYPRESS_INSTALL_BINARY: 0
+
+      # Ensure Chromium is present for Playwright in CI
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Build disclosures.json
         run: node tools/scrape-otc-and-sec.js
         env:
-          SEC_USER_AGENT: "Standard Dental Labs (IR@sdl.care)"  # per SEC API guidance
+          SEC_USER_AGENT: "Standard Dental Labs (info@sdl.care)"
+          WRITE_PATH: "disclosures.json"   # change to "docs/disclosures.json" if your Pages source is /docs
 
       - name: Commit updated disclosures.json
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git status --porcelain | grep disclosures.json; then
-            git add disclosures.json
-            git commit -m "chore: update disclosures.json"
+          if git status --porcelain | grep -E "disclosures.json|docs/disclosures.json"; then
+            git add disclosures.json docs/disclosures.json 2>/dev/null || true
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore: update disclosures.json"
             git push
           else
             echo "No changes."
