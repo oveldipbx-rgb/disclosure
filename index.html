@@ -1,48 +1,48 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Standard Dental Labs — Disclosures</title>
-  <link rel="preload" href="styles.css" as="style">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <main class="wrap">
-    <header class="page-head">
-      <h1>Company Disclosures</h1>
-      <p class="sub">Material updates, filings, and investor notices.</p>
-    </header>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Disclosures</title>
+<main id="app" style="max-width:880px;margin:32px auto;padding:0 16px;font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif">
+  <h1 style="margin:0 0 8px">Company Disclosures</h1>
+  <p style="margin:0 0 16px;color:#666">Most recent first.</p>
+  <section id="notice" style="display:none;padding:12px;border:1px solid #ddd;border-radius:12px"></section>
+  <section id="list"></section>
+</main>
+<script>
+(async () => {
+  const $list = document.getElementById('list');
+  const $notice = document.getElementById('notice');
 
-    <section class="controls" aria-label="Filters">
-      <input id="q" type="search" placeholder="Search title or description…" aria-label="Search disclosures">
-      <select id="sort" aria-label="Sort">
-        <option value="date_desc" selected>Newest first</option>
-        <option value="date_asc">Oldest first</option>
-        <option value="title_asc">Title A–Z</option>
-        <option value="title_desc">Title Z–A</option>
-      </select>
-    </section>
+  function show(msg){
+    $notice.textContent = msg;
+    $notice.style.display = 'block';
+  }
 
-    <section id="status" class="status" role="status" aria-live="polite"></section>
+  try {
+    const res = await fetch('disclosures.json?ts=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const items = await res.json();
 
-    <section id="list" class="list" aria-label="Disclosures"></section>
+    if (!Array.isArray(items) || items.length === 0) {
+      show('No disclosures are available yet.');
+      return;
+    }
 
-    <nav class="pager" aria-label="Pagination">
-      <button id="prev" type="button" disabled>Previous</button>
-      <span id="pageinfo" class="pageinfo" aria-live="polite"></span>
-      <button id="next" type="button" disabled>Next</button>
-    </nav>
-
-    <footer class="page-foot">
-      <small>© <span id="year"></span> Standard Dental Labs Inc. All rights reserved.</small>
-    </footer>
-  </main>
-
-  <noscript>
-    <div class="noscript">This page needs JavaScript enabled to display disclosures.</div>
-  </noscript>
-
-  <script type="module" src="script.js"></script>
-</body>
-</html>
+    $list.innerHTML = items.map(i => `
+      <article style="border:1px solid #ddd;border-radius:12px;padding:16px;margin:0 0 12px">
+        <h3 style="margin:0 0 6px;font-size:1.05rem">
+          ${i.link ? `<a href="${i.link}" target="_blank" rel="noopener noreferrer">${i.title}</a>` : i.title}
+        </h3>
+        <time datetime="${i.date}" style="color:#666;font-size:.95rem">
+          ${new Date(i.date+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}
+        </time>
+        ${i.description ? `<p style="margin:6px 0 0">${i.description}</p>` : ``}
+      </article>
+    `).join('');
+  } catch (e) {
+    console.error(e);
+    show('There was a problem loading disclosures. Try again later.');
+  }
+})();
+</script>
